@@ -968,31 +968,67 @@ async function openStore(storeId){
     div.className = `product-card ${saleDayClass}`;
     div.style.marginTop = "10px";
 
-    div.innerHTML = `
-      <img src="${p.image || "https://via.placeholder.com/300"}" alt="${escapeHTML(p.name)}">
-      <div class="product-info">
-        <span class="badge ${saleDayClass}">${escapeHTML(saleDayLabel)}</span>
-        <h3>${escapeHTML(p.name)}</h3>
-        <div>¥${Number(p.price || 0)}</div>
-        <div>在庫:${Number(p.stock || 0)}</div>
-        <button class="btn btn-primary" style="margin-top:8px;">カートに追加</button>
-      </div>
-    `;
+   const productImageSrc = p.image || "https://via.placeholder.com/300";
 
-    div.querySelector("button").onclick = ()=>{
-      addToCart({
-        id:doc.id,
-        storeId,
-        storeName:store.name || "",
-        storeClass:store.className || "",
-        name:p.name,
-        price:Number(p.price || 0),
-        stock:Number(p.stock || 0),
-        image:p.image || "",
-        saleDay:p.saleDay || "",
-        saleDayLabel:p.saleDayLabel || getSaleDayLabel(p.saleDay)
-      });
-    };
+div.innerHTML = `
+  <img
+    src="${productImageSrc}"
+    alt="${escapeHTML(p.name)}"
+    style="cursor:zoom-in;"
+    data-action="product-image"
+  >
+
+  <div class="product-info">
+    <span class="badge ${saleDayClass}">${escapeHTML(saleDayLabel)}</span>
+    <h3>${escapeHTML(p.name)}</h3>
+    <div>¥${Number(p.price || 0)}</div>
+    <div>在庫:${Number(p.stock || 0)}</div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+      <button class="btn" data-action="zoom-product">
+        画像を拡大
+      </button>
+
+      <button class="btn btn-primary" data-action="add-cart">
+        カートに追加
+      </button>
+    </div>
+  </div>
+`;
+
+    const productData = {
+  id: doc.id,
+  storeId,
+  storeName: store.name || "",
+  storeClass: store.className || "",
+  name: p.name,
+  price: Number(p.price || 0),
+  stock: Number(p.stock || 0),
+  image: p.image || "",
+  saleDay: p.saleDay || "",
+  saleDayLabel: p.saleDayLabel || getSaleDayLabel(p.saleDay)
+};
+
+const productImage = div.querySelector('[data-action="product-image"]');
+if(productImage){
+  productImage.onclick = ()=>{
+    showImageModal(productImageSrc);
+  };
+}
+
+const zoomBtn = div.querySelector('[data-action="zoom-product"]');
+if(zoomBtn){
+  zoomBtn.onclick = ()=>{
+    showImageModal(productImageSrc);
+  };
+}
+
+const addCartBtn = div.querySelector('[data-action="add-cart"]');
+if(addCartBtn){
+  addCartBtn.onclick = ()=>{
+    addToCart(productData);
+  };
+}
 
     area.appendChild(div);
   });
