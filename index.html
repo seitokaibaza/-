@@ -1,6 +1,4 @@
 
-
-
 <!doctype html>
 <html lang="ja">
 <head>
@@ -9,7 +7,8 @@
 <title>学校祭バザー 前売り券販売サイト</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
 <style>
-:root{
+/* ===== 基本設定 ===== */
+:root {
   --accent:#0066cc;
   --bg:#eef6ff;
   --card:#fff;
@@ -20,41 +19,299 @@
   --day2-bg:#ffd6e8;
   --day2-border:#e85a9b;
 }
-*{box-sizing:border-box}
-body{font-family:'Nunito',sans-serif;margin:0;background:var(--bg);color:#042b4a}
-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:linear-gradient(90deg,var(--accent),#2a9df4);color:#fff;gap:12px}
-header h1{margin:0;font-size:1.2rem}
-.header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.btn{background:#fff;color:var(--accent);border:none;padding:8px 12px;border-radius:999px;cursor:pointer;font-weight:700}
-.btn:hover{opacity:0.9}.btn:disabled{opacity:0.5;cursor:not-allowed}
-.btn-primary{background:var(--accent);color:white}.btn-danger{background:#ff4d4d;color:white}
-.container{max-width:1200px;margin:16px auto;padding:0 12px}
-.card{background:#fff;border-radius:12px;padding:12px;box-shadow:0 6px 18px rgba(0,0,0,0.06)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
-.product-card{background:#fff;border-radius:12px;overflow:hidden;cursor:pointer;box-shadow:0 6px 14px rgba(0,0,0,0.08);border:2px solid transparent}
-.product-card.day1{background:var(--day1-bg);border-color:var(--day1-border)}
-.product-card.day2{background:var(--day2-bg);border-color:var(--day2-border)}
-.product-card img{width:100%;height:160px;object-fit:cover;display:block}
-.product-info{padding:10px}
-.input{width:100%;padding:10px;border-radius:8px;border:1px solid #ddd;margin-top:8px;background:white}
-.hidden{display:none}
-.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:999;padding:12px}
-.modal{background:#fff;padding:16px;border-radius:12px;width:92%;max-width:900px;max-height:85vh;overflow-y:auto}
-.small{font-size:0.9rem;color:#666}
-.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-weight:700;font-size:0.85rem;margin-bottom:6px}
-.badge.day1{background:#ffe066;color:#5c4700}.badge.day2{background:#ff9ec7;color:#6b0638}
-.cart-toggle-btn{position:fixed;right:20px;bottom:20px;z-index:1001;border:none;background:#0066cc;color:white;padding:18px 24px;border-radius:999px;font-size:18px;font-weight:bold;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,0.25);min-width:140px;}
-.cart-count{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 8px;margin-left:6px;background:white;color:#0066cc;border-radius:999px;font-size:15px;font-weight:bold}
-.cart-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid #eee}
-.cart-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.checkout-summary{background:#f7fbff;border:1px solid #d9ebff;padding:12px;border-radius:12px;margin:12px 0}
-.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
-.notice{background:#fffbe6;border:1px solid #ffe58f;padding:10px;border-radius:10px;margin:10px 0;line-height:1.6;word-break:break-word}
-@media(max-width:600px){
-  header{align-items:flex-start;flex-direction:column}
-  .header-right{width:100%;justify-content:flex-start}
-  .cart-row{grid-template-columns:1fr}
-  .cart-actions{justify-content:flex-start}
+
+* {
+  box-sizing:border-box
+}
+
+body {
+  font-family:'Nunito',sans-serif;
+  margin:0;
+  background:var(--bg);
+  color:#042b4a
+}
+
+header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:12px 16px;
+  background:linear-gradient(90deg,var(--accent),#2a9df4);
+  color:#fff;
+  gap:12px
+}
+
+header h1 {
+  margin:0;
+  font-size:1.2rem
+}
+
+.header-right {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-end
+}
+
+/* ===== ボタン・レイアウト ===== */
+.btn {
+  background:#fff;
+  color:var(--accent);
+  border:none;
+  padding:8px 12px;
+  border-radius:999px;
+  cursor:pointer;
+  font-weight:700
+}
+
+.btn:hover {
+  opacity:0.9
+}
+
+.btn:disabled {
+  opacity:0.5;
+  cursor:not-allowed
+}
+
+.btn-primary {
+  background:var(--accent);
+  color:white
+}
+
+.btn-danger {
+  background:#ff4d4d;
+  color:white
+}
+
+.container {
+  max-width:1200px;
+  margin:16px auto;
+  padding:0 12px
+}
+
+.card {
+  background:#fff;
+  border-radius:12px;
+  padding:12px;
+  box-shadow:0 6px 18px rgba(0,0,0,0.06)
+}
+
+.grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:12px
+}
+
+.product-card {
+  background:#fff;
+  border-radius:12px;
+  overflow:hidden;
+  cursor:pointer;
+  box-shadow:0 6px 14px rgba(0,0,0,0.08);
+  border:2px solid transparent
+}
+
+.product-card.day1 {
+  background:var(--day1-bg);
+  border-color:var(--day1-border)
+}
+
+.product-card.day2 {
+  background:var(--day2-bg);
+  border-color:var(--day2-border)
+}
+
+.product-card img {
+  width:100%;
+  height:160px;
+  object-fit:cover;
+  display:block
+}
+
+.product-info {
+  padding:10px
+}
+
+.input {
+  width:100%;
+  padding:10px;
+  border-radius:8px;
+  border:1px solid #ddd;
+  margin-top:8px;
+  background:white
+}
+
+.hidden {
+  display:none
+}
+
+/* ===== モーダル ===== */
+.modal-backdrop {
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.45);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:999;
+  padding:12px
+}
+
+.modal {
+  background:#fff;
+  padding:16px;
+  border-radius:12px;
+  width:92%;
+  max-width:900px;
+  max-height:85vh;
+  overflow-y:auto
+}
+
+.small {
+  font-size:0.9rem;
+  color:#666
+}
+
+.badge {
+  display:inline-block;
+  padding:4px 8px;
+  border-radius:999px;
+  font-weight:700;
+  font-size:0.85rem;
+  margin-bottom:6px
+}
+
+.badge.day1 {
+  background:#ffe066;
+  color:#5c4700
+}
+
+.badge.day2 {
+  background:#ff9ec7;
+  color:#6b0638
+}
+
+/* ===== カート ===== */
+.cart-toggle-btn {
+  position:fixed;
+  right:20px;
+  bottom:20px;
+  z-index:1001;
+  border:none;
+  background:#0066cc;
+  color:white;
+  padding:18px 24px;
+  border-radius:999px;
+  font-size:18px;
+  font-weight:bold;
+  cursor:pointer;
+  box-shadow:0 6px 20px rgba(0,0,0,0.25);
+  min-width:140px;
+}
+
+.cart-count {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:26px;
+  height:26px;
+  padding:0 8px;
+  margin-left:6px;
+  background:white;
+  color:#0066cc;
+  border-radius:999px;
+  font-size:15px;
+  font-weight:bold
+}
+
+.cart-row {
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:10px;
+  align-items:center;
+  padding:12px 0;
+  border-bottom:1px solid #eee
+}
+
+.cart-actions {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+  justify-content:flex-end
+}
+
+.checkout-summary {
+  background:#f7fbff;
+  border:1px solid #d9ebff;
+  padding:12px;
+  border-radius:12px;
+  margin:12px 0
+}
+
+.form-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:8px
+}
+
+.notice {
+  background:#fffbe6;
+  border:1px solid #ffe58f;
+  padding:10px;
+  border-radius:10px;
+  margin:10px 0;
+  line-height:1.6;
+  word-break:break-word
+}
+
+/* ===== 並べ替え ===== */
+.sort-handle {
+  display:inline-block;
+  background:#f0f6ff;
+  color:#0066cc;
+  border:1px solid #cfe5ff;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:0.85rem;
+  font-weight:700;
+  cursor:grab;
+  user-select:none;
+}
+
+.sort-handle:active {
+  cursor:grabbing;
+}
+
+.sort-ghost {
+  opacity:0.5;
+}
+
+.sort-chosen {
+  transform:scale(1.02);
+}
+
+/* ===== スマホ表示 ===== */
+@media(max-width:600px) {
+  header {
+    align-items:flex-start;
+    flex-direction:column
+  }
+
+  .header-right {
+    width:100%;
+    justify-content:flex-start
+  }
+
+  .cart-row {
+    grid-template-columns:1fr
+  }
+
+  .cart-actions {
+    justify-content:flex-start
+  }
+
 }
 </style>
 </head>
@@ -122,8 +379,12 @@ header h1{margin:0;font-size:1.2rem}
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
 <script>
+/* =========================================================
+  Firebase / 初期設定
+========================================================= */
 const firebaseConfig = {
   apiKey: "AIzaSyDYrOOxN-uer_6B67Dlj2NNIohJHUh4fvQ",
   authDomain: "west-schoolfesta-app.firebaseapp.com",
@@ -146,6 +407,9 @@ const provider = new firebase.auth.GoogleAuthProvider();
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwLZi_pYcWDOUm0yoAasa2eA_QpFi9NpdTvZ0ekwDb1Hfo3DQiqco3Trb9E4P0cAlx6Jg/exec";
 
 
+/* =========================================================
+  グローバル状態
+========================================================= */
 let currentUser = null;
 
 /*
@@ -183,12 +447,17 @@ let saleStatus = {
   message:"現在、購入受付は開始していません。"
 };
 
+/* =========================================================
+  権限・モード管理
+========================================================= */
+
 function getRoleLabel(role){
   if(role === "admin") return "管理者";
   if(role === "seller") return "販売者";
   if(role === "purchaser") return "購入者";
   return "-";
 }
+
 
 function canUseMode(mode){
   if(currentRole === "admin"){
@@ -202,6 +471,7 @@ function canUseMode(mode){
   return mode === "purchaser";
 }
 
+
 function setActiveRole(mode){
   if(!canUseMode(mode)){
     alert("このモードは選択できません");
@@ -213,6 +483,7 @@ function setActiveRole(mode){
   updateRoleUI();
   loadStores();
 }
+
 
 function restoreActiveRole(){
   const saved = localStorage.getItem("bazaarActiveRole");
@@ -230,25 +501,31 @@ function restoreActiveRole(){
   }
 }
 
+
 function hasSellerPermission(){
   return currentRole === "seller" || currentRole === "admin";
 }
+
 
 function hasAdminPermission(){
   return currentRole === "admin";
 }
 
+
 function isSellerMode(){
   return activeRole === "seller" && hasSellerPermission();
 }
 
+
 function isAdminMode(){
   return activeRole === "admin" && hasAdminPermission();
 }
+
 function canEditStore(store){
   if(isAdminMode()) return true;
   return isSellerMode() && currentUser && store && store.ownerId === currentUser.uid;
 }
+
 
 function canDeleteProductFromStore(store){
   if(isAdminMode()) return true;
@@ -299,6 +576,10 @@ function updateRoleUI(){
   }
 }
 
+/* =========================================================
+  表示用ユーティリティ
+========================================================= */
+
 function escapeHTML(value){
   return String(value ?? "")
     .replaceAll("&","&amp;")
@@ -308,11 +589,13 @@ function escapeHTML(value){
     .replaceAll("'","&#039;");
 }
 
+
 function getSaleDayLabel(saleDay){
   if(saleDay === "day1") return "1日目";
   if(saleDay === "day2") return "2日目";
   return "未設定";
 }
+
 
 function getSaleDayClass(saleDay){
   if(saleDay === "day1") return "day1";
@@ -320,14 +603,17 @@ function getSaleDayClass(saleDay){
   return "";
 }
 
+
 function showModal(html){
   document.getElementById("modalContent").innerHTML = html;
   document.getElementById("modal").style.display = "flex";
 }
 
+
 function closeModal(){
   document.getElementById("modal").style.display = "none";
 }
+
 
 document.getElementById("modal").onclick = (e)=>{
   if(e.target.id === "modal") closeModal();
@@ -339,6 +625,10 @@ document.getElementById("modal").onclick = (e)=>{
   店舗ロゴ：500px / 0.65
   商品画像：300px / 0.55
 */
+/* =========================================================
+  画像圧縮
+========================================================= */
+
 async function compressImage(file, maxWidth = 300, quality = 0.55){
   return new Promise((resolve, reject)=>{
     const img = new Image();
@@ -362,9 +652,14 @@ async function compressImage(file, maxWidth = 300, quality = 0.55){
   });
 }
 
+/* =========================================================
+  カート管理
+========================================================= */
+
 function updateCartButton(){
   document.getElementById("cartCount").innerText = cart.length;
 }
+
 
 function getGroupedCart(){
   const grouped = {};
@@ -396,14 +691,20 @@ function getGroupedCart(){
   return Object.values(grouped);
 }
 
+
 function getCartTotal(){
   return cart.reduce((sum,item)=>sum + Number(item.price || 0), 0);
 }
 
 
+/* =========================================================
+  プロフィール管理
+========================================================= */
+
 function buildStudentCode(grade, classNo, seatNo){
   return String(grade) + String(classNo) + String(seatNo).padStart(2, "0");
 }
+
 
 function isProfileComplete(data){
   return !!(
@@ -417,6 +718,7 @@ function isProfileComplete(data){
   );
 }
 
+
 function extractProfile(data){
   return {
     grade:Number(data.grade),
@@ -426,6 +728,7 @@ function extractProfile(data){
     name:String(data.name || "")
   };
 }
+
 
 function showProfileRegistrationModal(existing = {}){
   const grade = existing.grade || "";
@@ -458,6 +761,7 @@ function showProfileRegistrationModal(existing = {}){
     </button>
   `);
 }
+
 
 async function saveProfile(){
   if(!currentUser){
@@ -512,6 +816,10 @@ async function saveProfile(){
   alert("プロフィールを登録しました。4桁番号は " + studentCode + " です。");
 }
 
+/* =========================================================
+  ログイン処理
+========================================================= */
+
 async function setupLoggedInUser(user){
   if(!user.email || !user.email.endsWith("@west.ed.jp")){
     alert("西高アカウントのみ利用できます");
@@ -565,6 +873,7 @@ async function setupLoggedInUser(user){
   }
 }
 
+
 document.getElementById("googleLoginBtn").onclick = async ()=>{
   try{
     const result = await auth.signInWithPopup(provider);
@@ -575,6 +884,9 @@ document.getElementById("googleLoginBtn").onclick = async ()=>{
   }
 };
 
+/* =========================================================
+  購入受付 開始/停止
+========================================================= */
 /* ================= Sale Open / Close Control =================
   管理者が購入受付を開始するまで、購入を確定できないようにします。
   状態は Firestore の settings/sale に保存します。
@@ -585,9 +897,11 @@ document.getElementById("googleLoginBtn").onclick = async ()=>{
     message: "現在、購入受付は開始していません。"
   }
 */
+
 function saleDocRef(){
   return db.collection("settings").doc("sale");
 }
+
 
 function updateSaleStatusLabel(){
   const label = document.getElementById("saleStatusLabel");
@@ -603,6 +917,7 @@ function updateSaleStatusLabel(){
     label.style.fontWeight = "700";
   }
 }
+
 
 async function refreshSaleStatus(){
   try{
@@ -632,6 +947,7 @@ async function refreshSaleStatus(){
   }
 }
 
+
 async function setSaleOpen(open){
   if(!isAdminMode()){
     alert("管理者モードのみ操作できます");
@@ -658,6 +974,7 @@ async function setSaleOpen(open){
   }
 }
 
+
 async function canCheckoutNow(){
   const snap = await saleDocRef().get();
 
@@ -673,13 +990,18 @@ async function canCheckoutNow(){
   return true;
 }
 
+/* =========================================================
+  商品削除許可 管理
+========================================================= */
 /* ================= Product Delete Control =================
   管理者が販売者による商品削除の可否を切り替えるための設定です。
   管理者はこの設定に関係なく、常に商品削除・編集ができます。
 */
+
 function productDeleteDocRef(){
   return db.collection("settings").doc("productDelete");
 }
+
 
 function updateProductDeleteStatusLabel(){
   const label = document.getElementById("productDeleteStatusLabel");
@@ -695,6 +1017,7 @@ function updateProductDeleteStatusLabel(){
     label.style.fontWeight = "700";
   }
 }
+
 
 async function refreshProductDeleteStatus(){
   try{
@@ -724,6 +1047,7 @@ async function refreshProductDeleteStatus(){
   }
 }
 
+
 async function setProductDeleteAllowed(allowed){
   if(!isAdminMode()){
     alert("管理者モードのみ操作できます");
@@ -750,6 +1074,10 @@ async function setProductDeleteAllowed(allowed){
   }
 }
 
+/* =========================================================
+  認証状態の監視
+========================================================= */
+
 auth.onAuthStateChanged(async user=>{
   try{
     if(user){
@@ -773,6 +1101,10 @@ auth.onAuthStateChanged(async user=>{
     alert(e.message);
   }
 });
+
+/* =========================================================
+  モード切替
+========================================================= */
 
 document.getElementById("modeSwitchBtn").onclick = ()=>{
   if(!currentUser){
@@ -814,6 +1146,10 @@ document.getElementById("modeSwitchBtn").onclick = ()=>{
   `);
 };
 
+/* =========================================================
+  店舗作成・店舗一覧・店舗編集/削除
+========================================================= */
+
 document.getElementById("createStoreBtn").onclick = async ()=>{
   if(!(isSellerMode() || isAdminMode())){
     alert("販売者のみ可能です");
@@ -841,12 +1177,17 @@ document.getElementById("createStoreBtn").onclick = async ()=>{
     logo = await compressImage(file, 500, 0.65);
   }
 
-  const storeRef = await db.collection("stores").add({
+ await db.collection("stores")
+  .doc(currentStoreId)
+  .collection("products")
+  .add({
     name,
-    className,
-    pass,
-    logo,
-    ownerId:currentUser.uid,
+    price,
+    stock,
+    image,
+    saleDay,
+    saleDayLabel:getSaleDayLabel(saleDay),
+    sortOrder: Date.now(),
     createdAt:new Date()
   });
 
@@ -856,15 +1197,21 @@ document.getElementById("createStoreBtn").onclick = async ()=>{
   loadStores();
 };
 
+
 async function loadStores(){
   const storesGrid = document.getElementById("storesGrid");
   storesGrid.innerHTML = "";
 
   const snap = await db.collection("stores").get();
-
+  const docs = snap.docs.sort((a,b)=>{
+  const av = a.data().sortOrder ?? 9999999999999;
+  const bv = b.data().sortOrder ?? 9999999999999;
+  return av - bv;
+});
   snap.forEach(doc=>{
     const store = doc.data();
     const card = document.createElement("div");
+    card.dataset.storeId = doc.id;
     card.className = "product-card";
 
     const logoSrc = store.logo || "https://via.placeholder.com/300";
@@ -875,6 +1222,7 @@ async function loadStores(){
         <h3>${escapeHTML(store.name)}</h3>
         <div class="small">${escapeHTML(store.className || "")}</div>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+          ${isAdminMode() ? `<span class="sort-handle" data-action="sort-store">↕ 並べ替え</span>` : ""}
           ${isAdminMode() ? `<button class="btn btn-danger" data-action="delete-store">店舗削除</button>` : ""}
           ${canEditStore(store) ? `<button class="btn" data-action="edit-store">店舗編集</button>` : ""}
           <button class="btn btn-primary" data-action="open-store">店舗を見る</button>
@@ -932,7 +1280,10 @@ async function loadStores(){
 
     storesGrid.appendChild(card);
   });
+
+  initStoreSortable();
 }
+
 
 async function deleteStore(storeId){
   if(!isAdminMode()){
@@ -974,6 +1325,7 @@ async function deleteStore(storeId){
   }
 }
 
+
 async function openEditStore(storeId){
   if(!currentUser){
     alert("ログインしてください");
@@ -1009,6 +1361,7 @@ async function openEditStore(storeId){
     </div>
   `);
 }
+
 
 async function submitEditStore(){
   if(!editingStoreId){
@@ -1057,6 +1410,7 @@ async function submitEditStore(){
   loadStores();
 }
 
+
 function showImageModal(url){
   showModal(`
     <div style="text-align:center">
@@ -1065,6 +1419,10 @@ function showImageModal(url){
     </div>
   `);
 }
+
+/* =========================================================
+  商品追加・商品一覧・商品編集/削除
+========================================================= */
 
 async function openAddProduct(storeId){
   if(!(isSellerMode() || isAdminMode())){
@@ -1117,6 +1475,7 @@ async function openAddProduct(storeId){
   `);
 }
 
+
 async function submitProduct(){
   if(!productAuthPassed){
     alert("認証されていません");
@@ -1163,6 +1522,7 @@ async function submitProduct(){
   closeModal();
   loadStores();
 }
+
 
 async function openStore(storeId){
   lastOpenStoreId = storeId;
@@ -1294,6 +1654,7 @@ if(addCartBtn){
   });
 }
 
+
 async function openEditProduct(storeId, productId){
   if(!currentUser){
     alert("ログインしてください");
@@ -1340,6 +1701,7 @@ async function openEditProduct(storeId, productId){
     </div>
   `);
 }
+
 
 async function submitEditProduct(){
   if(!editingProductStoreId || !editingProductId){
@@ -1403,6 +1765,7 @@ async function submitEditProduct(){
   openStore(storeId);
 }
 
+
 async function deleteProduct(storeId, productId){
   if(!currentUser){
     alert("ログインしてください");
@@ -1441,6 +1804,10 @@ async function deleteProduct(storeId, productId){
     alert("商品削除に失敗しました: " + e.message);
   }
 }
+
+/* =========================================================
+  カート画面
+========================================================= */
 
 async function addToCart(product){
   const ref = db.collection("stores")
@@ -1522,12 +1889,14 @@ function openCartPage(){
   `);
 }
 
+
 async function increaseCartItem(storeId, productId){
   const baseItem = cart.find(item=>item.storeId === storeId && item.id === productId);
   if(!baseItem) return;
   await addToCart(baseItem);
   openCartPage();
 }
+
 
 function decreaseCartItem(storeId, productId){
   const index = cart.findIndex(item=>item.storeId === storeId && item.id === productId);
@@ -1536,18 +1905,25 @@ function decreaseCartItem(storeId, productId){
   openCartPage();
 }
 
+
 function removeCartGroup(storeId, productId){
   cart = cart.filter(item=>!(item.storeId === storeId && item.id === productId));
   updateCartButton();
   openCartPage();
 }
 
+
 function returnFromCart(){
   if(lastOpenStoreId) openStore(lastOpenStoreId);
   else closeModal();
 }
 
+
 document.getElementById("toggleCartBtn").onclick = ()=>openCartPage();
+
+/* =========================================================
+  購入確認・購入確定
+========================================================= */
 
 function openCheckoutConfirm(){
   if(!currentUser){
@@ -1606,6 +1982,7 @@ function openCheckoutConfirm(){
   `);
 }
 
+
 function getBuyerInfoFromProfile(){
   if(!currentProfile){
     throw new Error("プロフィールが登録されていません");
@@ -1619,6 +1996,7 @@ function getBuyerInfoFromProfile(){
     name:String(currentProfile.name || "")
   };
 }
+
 
 async function performCheckout(){
   if(isCheckingOut) return;
