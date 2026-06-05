@@ -1,5 +1,6 @@
 
 
+
 <!doctype html>
 <html lang="ja">
 <head>
@@ -42,13 +43,13 @@ header h1{margin:0;font-size:1.2rem}
 .small{font-size:0.9rem;color:#666}
 .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-weight:700;font-size:0.85rem;margin-bottom:6px}
 .badge.day1{background:#ffe066;color:#5c4700}.badge.day2{background:#ff9ec7;color:#6b0638}
-.cart-toggle-btn{position:fixed;right:20px;bottom:20px;z-index:1001;border:none;background:#0066cc;color:white;padding:18px 24px;border-radius:999px;font-size:18px;font-weight:bold;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,0.25) min-width:140px;}
-.cart-count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;margin-left:4px;background:white;color:#0066cc;border-radius:999px;font-size:13px}
+.cart-toggle-btn{position:fixed;right:20px;bottom:20px;z-index:1001;border:none;background:#0066cc;color:white;padding:18px 24px;border-radius:999px;font-size:18px;font-weight:bold;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,0.25);min-width:140px;}
+.cart-count{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 8px;margin-left:6px;background:white;color:#0066cc;border-radius:999px;font-size:15px;font-weight:bold}
 .cart-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid #eee}
 .cart-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .checkout-summary{background:#f7fbff;border:1px solid #d9ebff;padding:12px;border-radius:12px;margin:12px 0}
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
-.notice{background:#fffbe6;border:1px solid #ffe58f;padding:10px;border-radius:10px;margin:10px 0}
+.notice{background:#fffbe6;border:1px solid #ffe58f;padding:10px;border-radius:10px;margin:10px 0;line-height:1.6;word-break:break-word}
 @media(max-width:600px){
   header{align-items:flex-start;flex-direction:column}
   .header-right{width:100%;justify-content:flex-start}
@@ -98,6 +99,19 @@ header h1{margin:0;font-size:1.2rem}
       <button class="btn btn-primary" onclick="setSaleOpen(true)">購入受付を開始</button>
       <button class="btn btn-danger" onclick="setSaleOpen(false)">購入受付を停止</button>
       <button class="btn" onclick="refreshSaleStatus()">状態を更新</button>
+    </div>
+
+    <hr style="margin:18px 0;">
+
+    <div class="notice">
+      <strong>販売者の商品削除：</strong>
+      <span id="productDeleteStatusLabel">確認中...</span><br>
+      <span class="small">許可中のときだけ、販売者が自分の店舗の商品を削除できます。管理者は常に削除・編集できます。</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="setProductDeleteAllowed(true)">販売者の商品削除を許可</button>
+      <button class="btn btn-danger" onclick="setProductDeleteAllowed(false)">販売者の商品削除を停止</button>
+      <button class="btn" onclick="refreshProductDeleteStatus()">状態を更新</button>
     </div>
   </div>
 </div>
@@ -157,6 +171,13 @@ let lastOpenStoreId = null;
 let cart = [];
 let isCheckingOut = false;
 let productAuthPassed = false;
+let editingStoreId = null;
+let editingProductStoreId = null;
+let editingProductId = null;
+let productDeleteStatus = {
+  isProductDeleteAllowed:false,
+  message:"現在、販売者による商品削除は停止中です。"
+};
 let saleStatus = {
   isSaleOpen:false,
   message:"現在、購入受付は開始していません。"
@@ -200,6 +221,12 @@ function restoreActiveRole(){
     activeRole = saved;
   }else{
     activeRole = "purchaser";
+    localStorage.setItem("bazaarActiveRole", "purchaser");
+  }
+
+  if(!canUseMode(activeRole)){
+    activeRole = "purchaser";
+    localStorage.setItem("bazaarActiveRole", "purchaser");
   }
 }
 
@@ -218,8 +245,25 @@ function isSellerMode(){
 function isAdminMode(){
   return activeRole === "admin" && hasAdminPermission();
 }
+function canEditStore(store){
+  if(isAdminMode()) return true;
+  return isSellerMode() && currentUser && store && store.ownerId === currentUser.uid;
+}
+
+function canDeleteProductFromStore(store){
+  if(isAdminMode()) return true;
+  return canEditStore(store) && productDeleteStatus.isProductDeleteAllowed === true;
+}
+
 
 function updateRoleUI(){
+  // Firestore側で role が admin から seller 等に変更された場合、
+  // 端末に残っている古い操作モードを強制的に戻します。
+  if(!canUseMode(activeRole)){
+    activeRole = "purchaser";
+    localStorage.setItem("bazaarActiveRole", "purchaser");
+  }
+
   document.getElementById("roleLabel").innerText =
     "権限: " + getRoleLabel(currentRole) +
     " / 操作: " + getRoleLabel(activeRole);
@@ -238,6 +282,7 @@ function updateRoleUI(){
     if(isAdminMode()){
       adminPanel.classList.remove("hidden");
       refreshSaleStatus();
+      refreshProductDeleteStatus();
     }else{
       adminPanel.classList.add("hidden");
     }
@@ -628,6 +673,83 @@ async function canCheckoutNow(){
   return true;
 }
 
+/* ================= Product Delete Control =================
+  管理者が販売者による商品削除の可否を切り替えるための設定です。
+  管理者はこの設定に関係なく、常に商品削除・編集ができます。
+*/
+function productDeleteDocRef(){
+  return db.collection("settings").doc("productDelete");
+}
+
+function updateProductDeleteStatusLabel(){
+  const label = document.getElementById("productDeleteStatusLabel");
+  if(!label) return;
+
+  if(productDeleteStatus.isProductDeleteAllowed){
+    label.innerText = "販売者の商品削除：許可中";
+    label.style.color = "#0a7a24";
+    label.style.fontWeight = "700";
+  }else{
+    label.innerText = "販売者の商品削除：停止中";
+    label.style.color = "#cc0000";
+    label.style.fontWeight = "700";
+  }
+}
+
+async function refreshProductDeleteStatus(){
+  try{
+    const snap = await productDeleteDocRef().get();
+
+    if(snap.exists){
+      productDeleteStatus = {
+        isProductDeleteAllowed: snap.data().isProductDeleteAllowed === true,
+        message: snap.data().message || "現在、販売者による商品削除は停止中です。"
+      };
+    }else{
+      productDeleteStatus = {
+        isProductDeleteAllowed:false,
+        message:"現在、販売者による商品削除は停止中です。"
+      };
+    }
+
+    updateProductDeleteStatusLabel();
+
+  }catch(e){
+    console.error(e);
+    productDeleteStatus = {
+      isProductDeleteAllowed:false,
+      message:"商品削除設定を確認できませんでした。"
+    };
+    updateProductDeleteStatusLabel();
+  }
+}
+
+async function setProductDeleteAllowed(allowed){
+  if(!isAdminMode()){
+    alert("管理者モードのみ操作できます");
+    return;
+  }
+
+  const ok = confirm(allowed ? "販売者による商品削除を許可しますか？" : "販売者による商品削除を停止しますか？");
+  if(!ok) return;
+
+  try{
+    await productDeleteDocRef().set({
+      isProductDeleteAllowed: allowed,
+      message: allowed ? "現在、販売者による商品削除が許可されています。" : "現在、販売者による商品削除は停止中です。",
+      updatedBy: currentUser ? currentUser.email : "",
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, {merge:true});
+
+    await refreshProductDeleteStatus();
+    alert(allowed ? "販売者の商品削除を許可しました" : "販売者の商品削除を停止しました");
+
+  }catch(e){
+    console.error(e);
+    alert("商品削除設定の変更に失敗しました: " + e.message);
+  }
+}
+
 auth.onAuthStateChanged(async user=>{
   try{
     if(user){
@@ -754,6 +876,7 @@ async function loadStores(){
         <div class="small">${escapeHTML(store.className || "")}</div>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
           ${isAdminMode() ? `<button class="btn btn-danger" data-action="delete-store">店舗削除</button>` : ""}
+          ${canEditStore(store) ? `<button class="btn" data-action="edit-store">店舗編集</button>` : ""}
           <button class="btn btn-primary" data-action="open-store">店舗を見る</button>
           <button class="btn" data-action="image">画像を拡大</button>
           ${
@@ -780,6 +903,14 @@ async function loadStores(){
       imgBtn.onclick = (e)=>{
         e.stopPropagation();
         showImageModal(logoSrc);
+      };
+    }
+
+    const editBtn = card.querySelector('[data-action="edit-store"]');
+    if(editBtn){
+      editBtn.onclick = (e)=>{
+        e.stopPropagation();
+        openEditStore(doc.id);
       };
     }
 
@@ -822,6 +953,89 @@ async function deleteStore(storeId){
   }
 }
 
+async function openEditStore(storeId){
+  if(!currentUser){
+    alert("ログインしてください");
+    return;
+  }
+
+  const storeSnap = await db.collection("stores").doc(storeId).get();
+
+  if(!storeSnap.exists){
+    alert("店舗が見つかりません");
+    return;
+  }
+
+  const store = storeSnap.data();
+
+  if(!canEditStore(store)){
+    alert("この店舗を編集できるのは、店舗作成者または管理者のみです");
+    return;
+  }
+
+  editingStoreId = storeId;
+
+  showModal(`
+    <h2>店舗編集</h2>
+    <div class="notice">店舗名・店舗クラス・店舗パスワード・店舗画像を変更できます。</div>
+    <input id="editStoreName" class="input" placeholder="店舗名" value="${escapeHTML(store.name || "")}">
+    <input id="editStoreClass" class="input" placeholder="店舗クラス（例:3-1）" value="${escapeHTML(store.className || "")}">
+    <input id="editStorePass" class="input" type="text" placeholder="店舗パスワード" value="${escapeHTML(store.pass || "")}">
+    <input id="editStoreLogoFile" type="file" class="input" accept="image/*">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+      <button class="btn btn-primary" onclick="submitEditStore()">店舗情報を保存</button>
+      <button class="btn" onclick="closeModal()">閉じる</button>
+    </div>
+  `);
+}
+
+async function submitEditStore(){
+  if(!editingStoreId){
+    alert("編集対象の店舗がありません");
+    return;
+  }
+
+  const storeSnap = await db.collection("stores").doc(editingStoreId).get();
+  if(!storeSnap.exists){
+    alert("店舗が見つかりません");
+    return;
+  }
+
+  const store = storeSnap.data();
+  if(!canEditStore(store)){
+    alert("この店舗を編集できるのは、店舗作成者または管理者のみです");
+    return;
+  }
+
+  const name = document.getElementById("editStoreName").value.trim();
+  const className = document.getElementById("editStoreClass").value.trim();
+  const pass = document.getElementById("editStorePass").value.trim();
+  const file = document.getElementById("editStoreLogoFile").files[0];
+
+  if(!name || !className || !pass){
+    alert("店舗名・店舗クラス・店舗パスワードを入力してください");
+    return;
+  }
+
+  const updateData = {
+    name,
+    className,
+    pass,
+    updatedAt: new Date(),
+    updatedBy: currentUser ? currentUser.email : ""
+  };
+
+  if(file){
+    updateData.logo = await compressImage(file, 500, 0.65);
+  }
+
+  await db.collection("stores").doc(editingStoreId).update(updateData);
+  alert("店舗情報を保存しました");
+  editingStoreId = null;
+  closeModal();
+  loadStores();
+}
+
 function showImageModal(url){
   showModal(`
     <div style="text-align:center">
@@ -837,7 +1051,6 @@ async function openAddProduct(storeId){
     return;
   }
 
-  const pass = prompt("店舗パスワード");
   const storeSnap = await db.collection("stores").doc(storeId).get();
 
   if(!storeSnap.exists){
@@ -847,9 +1060,17 @@ async function openAddProduct(storeId){
 
   const store = storeSnap.data();
 
-  if(pass !== store.pass){
-    alert("パスワードが違います");
+  if(!canEditStore(store)){
+    alert("この店舗の商品を追加できるのは、店舗作成者または管理者のみです");
     return;
+  }
+
+  if(!isAdminMode()){
+    const pass = prompt("店舗パスワード");
+    if(pass !== store.pass){
+      alert("パスワードが違います");
+      return;
+    }
   }
 
   productAuthPassed = true;
@@ -946,6 +1167,7 @@ async function openStore(storeId){
   }
 
   const store = storeSnap.data();
+  await refreshProductDeleteStatus();
 
   const snap = await db.collection("stores")
     .doc(storeId)
@@ -989,6 +1211,9 @@ div.innerHTML = `
         画像を拡大
       </button>
 
+      ${canEditStore(store) ? `<button class="btn" data-action="edit-product">商品編集</button>` : ""}
+      ${canDeleteProductFromStore(store) ? `<button class="btn btn-danger" data-action="delete-product">商品削除</button>` : ""}
+
       <button class="btn btn-primary" data-action="add-cart">
         カートに追加
       </button>
@@ -1023,6 +1248,20 @@ if(zoomBtn){
   };
 }
 
+const editProductBtn = div.querySelector('[data-action="edit-product"]');
+if(editProductBtn){
+  editProductBtn.onclick = ()=>{
+    openEditProduct(storeId, doc.id);
+  };
+}
+
+const deleteProductBtn = div.querySelector('[data-action="delete-product"]');
+if(deleteProductBtn){
+  deleteProductBtn.onclick = ()=>{
+    deleteProduct(storeId, doc.id);
+  };
+}
+
 const addCartBtn = div.querySelector('[data-action="add-cart"]');
 if(addCartBtn){
   addCartBtn.onclick = ()=>{
@@ -1032,6 +1271,154 @@ if(addCartBtn){
 
     area.appendChild(div);
   });
+}
+
+async function openEditProduct(storeId, productId){
+  if(!currentUser){
+    alert("ログインしてください");
+    return;
+  }
+
+  const storeSnap = await db.collection("stores").doc(storeId).get();
+  if(!storeSnap.exists){
+    alert("店舗が見つかりません");
+    return;
+  }
+
+  const store = storeSnap.data();
+  if(!canEditStore(store)){
+    alert("この商品を編集できるのは、店舗作成者または管理者のみです");
+    return;
+  }
+
+  const productSnap = await db.collection("stores").doc(storeId).collection("products").doc(productId).get();
+  if(!productSnap.exists){
+    alert("商品が見つかりません");
+    return;
+  }
+
+  const product = productSnap.data();
+  editingProductStoreId = storeId;
+  editingProductId = productId;
+
+  showModal(`
+    <h2>商品編集</h2>
+    <div class="notice">商品名・価格・在庫・販売日・商品画像を変更できます。</div>
+    <input id="editProductName" class="input" placeholder="商品名" value="${escapeHTML(product.name || "")}">
+    <input id="editProductPrice" class="input" type="number" min="1" placeholder="価格" value="${Number(product.price || 0)}">
+    <input id="editProductStock" class="input" type="number" min="0" placeholder="在庫" value="${Number(product.stock || 0)}">
+    <select id="editProductSaleDay" class="input">
+      <option value="">販売日を選択してください</option>
+      <option value="day1" ${product.saleDay === "day1" ? "selected" : ""}>1日目</option>
+      <option value="day2" ${product.saleDay === "day2" ? "selected" : ""}>2日目</option>
+    </select>
+    <input id="editProductImageFile" type="file" class="input" accept="image/*">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+      <button class="btn btn-primary" onclick="submitEditProduct()">商品情報を保存</button>
+      <button class="btn" onclick="openStore('${storeId}')">商品一覧に戻る</button>
+    </div>
+  `);
+}
+
+async function submitEditProduct(){
+  if(!editingProductStoreId || !editingProductId){
+    alert("編集対象の商品がありません");
+    return;
+  }
+
+  const storeSnap = await db.collection("stores").doc(editingProductStoreId).get();
+  if(!storeSnap.exists){
+    alert("店舗が見つかりません");
+    return;
+  }
+
+  const store = storeSnap.data();
+  if(!canEditStore(store)){
+    alert("この商品を編集できるのは、店舗作成者または管理者のみです");
+    return;
+  }
+
+  const name = document.getElementById("editProductName").value.trim();
+  const price = Number(document.getElementById("editProductPrice").value);
+  const stock = Number(document.getElementById("editProductStock").value);
+  const saleDay = document.getElementById("editProductSaleDay").value;
+  const file = document.getElementById("editProductImageFile").files[0];
+
+  if(!name || price <= 0 || stock < 0){
+    alert("商品名・価格・在庫を正しく入力してください");
+    return;
+  }
+
+  if(!saleDay){
+    alert("1日目か2日目を選択してください");
+    return;
+  }
+
+  const updateData = {
+    name,
+    price,
+    stock,
+    saleDay,
+    saleDayLabel:getSaleDayLabel(saleDay),
+    updatedAt:new Date(),
+    updatedBy:currentUser ? currentUser.email : ""
+  };
+
+  if(file){
+    updateData.image = await compressImage(file, 300, 0.55);
+  }
+
+  await db.collection("stores")
+    .doc(editingProductStoreId)
+    .collection("products")
+    .doc(editingProductId)
+    .update(updateData);
+
+  const storeId = editingProductStoreId;
+  editingProductStoreId = null;
+  editingProductId = null;
+
+  alert("商品情報を保存しました");
+  openStore(storeId);
+}
+
+async function deleteProduct(storeId, productId){
+  if(!currentUser){
+    alert("ログインしてください");
+    return;
+  }
+
+  const storeSnap = await db.collection("stores").doc(storeId).get();
+  if(!storeSnap.exists){
+    alert("店舗が見つかりません");
+    return;
+  }
+
+  const store = storeSnap.data();
+  await refreshProductDeleteStatus();
+
+  if(!canDeleteProductFromStore(store)){
+    alert("現在、販売者による商品削除は許可されていません。管理者に確認してください。");
+    return;
+  }
+
+  const ok = confirm("この商品を削除しますか？削除すると購入者には表示されなくなります。");
+  if(!ok) return;
+
+  try{
+    await db.collection("stores")
+      .doc(storeId)
+      .collection("products")
+      .doc(productId)
+      .delete();
+
+    alert("商品を削除しました");
+    openStore(storeId);
+
+  }catch(e){
+    console.error(e);
+    alert("商品削除に失敗しました: " + e.message);
+  }
 }
 
 async function addToCart(product){
