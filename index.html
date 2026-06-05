@@ -42,7 +42,7 @@ header h1{margin:0;font-size:1.2rem}
 .small{font-size:0.9rem;color:#666}
 .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-weight:700;font-size:0.85rem;margin-bottom:6px}
 .badge.day1{background:#ffe066;color:#5c4700}.badge.day2{background:#ff9ec7;color:#6b0638}
-.cart-toggle-btn{position:fixed;right:20px;bottom:20px;z-index:1001;border:none;background:#0066cc;color:white;padding:14px 18px;border-radius:999px;font-size:16px;font-weight:bold;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,0.2)}
+.cart-toggle-btn{position:fixed;right:20px;bottom:20px;z-index:1001;border:none;background:#0066cc;color:white;padding:18px 24px;border-radius:999px;font-size:18px;font-weight:bold;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,0.25) min-width:140px;}
 .cart-count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;margin-left:4px;background:white;color:#0066cc;border-radius:999px;font-size:13px}
 .cart-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid #eee}
 .cart-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
@@ -1103,7 +1103,8 @@ function openCartPage(){
 
   showModal(`
     <h2>カート</h2>
-    <div class="notice">ここで、自分が何を何個買う予定か確認できます。</div>
+    <div class="notice">※購入確定後、キャンセルすることはできません。<br>
+  在庫がないものは購入できません。</div>
     ${rows}
     <div style="font-size:1.2rem;font-weight:bold;margin-top:12px;">合計：¥${total}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;">
