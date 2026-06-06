@@ -1203,12 +1203,14 @@ async function loadStores(){
   storesGrid.innerHTML = "";
 
   const snap = await db.collection("stores").get();
+
   const docs = snap.docs.sort((a,b)=>{
-  const av = a.data().sortOrder ?? 9999999999999;
-  const bv = b.data().sortOrder ?? 9999999999999;
-  return av - bv;
-});
-  snap.forEach(doc=>{
+    const av = a.data().sortOrder ?? 9999999999999;
+    const bv = b.data().sortOrder ?? 9999999999999;
+    return av - bv;
+  });
+
+  docs.forEach(doc=>{
     const store = doc.data();
     const card = document.createElement("div");
     card.dataset.storeId = doc.id;
@@ -1514,6 +1516,7 @@ async function submitProduct(){
       image,
       saleDay,
       saleDayLabel:getSaleDayLabel(saleDay),
+      sortOrder: Date.now(),
       createdAt:new Date()
     });
 
@@ -1560,7 +1563,13 @@ async function openStore(storeId){
     return;
   }
 
-  snap.forEach(doc=>{
+  const productDocs = snap.docs.sort((a,b)=>{
+    const av = a.data().sortOrder ?? 9999999999999;
+    const bv = b.data().sortOrder ?? 9999999999999;
+    return av - bv;
+  });
+
+  productDocs.forEach(doc=>{
     const p = doc.data();
 
     const saleDay = p.saleDay || "";
@@ -1570,6 +1579,7 @@ async function openStore(storeId){
     const div = document.createElement("div");
     div.className = `product-card ${saleDayClass}`;
     div.style.marginTop = "10px";
+    div.dataset.productId = doc.id;
 
    const productImageSrc = p.image || "https://via.placeholder.com/300";
 
@@ -1588,6 +1598,8 @@ div.innerHTML = `
     <div>在庫:${Number(p.stock || 0)}</div>
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+      ${canEditStore(store) ? `<span class="sort-handle" data-action="sort-product">↕ 並べ替え</span>` : ""}
+
       <button class="btn" data-action="zoom-product">
         画像を拡大
       </button>
@@ -1652,6 +1664,8 @@ if(addCartBtn){
 
     area.appendChild(div);
   });
+
+  initProductSortable(storeId, store);
 }
 
 
@@ -1808,6 +1822,89 @@ async function deleteProduct(storeId, productId){
 /* =========================================================
   カート画面
 ========================================================= */
+
+function initStoreSortable(){
+  const storesGrid = document.getElementById("storesGrid");
+
+  if(!storesGrid || !isAdminMode()) return;
+  if(typeof Sortable === "undefined") return;
+
+  new Sortable(storesGrid, {
+    animation: 150,
+    ghostClass: "sort-ghost",
+    chosenClass: "sort-chosen",
+    handle: ".sort-handle",
+
+    onEnd: async ()=>{
+      const cards = Array.from(storesGrid.querySelectorAll("[data-store-id]"));
+      const batch = db.batch();
+
+      cards.forEach((card,index)=>{
+        const storeId = card.dataset.storeId;
+        if(!storeId) return;
+
+        const ref = db.collection("stores").doc(storeId);
+
+        batch.update(ref,{
+          sortOrder:index + 1,
+          updatedAt:new Date(),
+          updatedBy:currentUser ? currentUser.email : ""
+        });
+      });
+
+      try{
+        await batch.commit();
+      }catch(e){
+        console.error(e);
+        alert("店舗の並べ替え保存に失敗しました: " + e.message);
+      }
+    }
+  });
+}
+
+function initProductSortable(storeId, store){
+  const productsArea = document.getElementById("productsArea");
+
+  if(!productsArea) return;
+  if(!canEditStore(store)) return;
+  if(typeof Sortable === "undefined") return;
+
+  new Sortable(productsArea, {
+    animation: 150,
+    ghostClass: "sort-ghost",
+    chosenClass: "sort-chosen",
+    handle: ".sort-handle",
+
+    onEnd: async ()=>{
+      const cards = Array.from(productsArea.querySelectorAll("[data-product-id]"));
+      const batch = db.batch();
+
+      cards.forEach((card,index)=>{
+        const productId = card.dataset.productId;
+        if(!productId) return;
+
+        const ref = db.collection("stores")
+          .doc(storeId)
+          .collection("products")
+          .doc(productId);
+
+        batch.update(ref,{
+          sortOrder:index + 1,
+          updatedAt:new Date(),
+          updatedBy:currentUser ? currentUser.email : ""
+        });
+      });
+
+      try{
+        await batch.commit();
+      }catch(e){
+        console.error(e);
+        alert("商品の並べ替え保存に失敗しました: " + e.message);
+      }
+    }
+  });
+}
+
 
 async function addToCart(product){
   const ref = db.collection("stores")
