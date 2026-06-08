@@ -1907,22 +1907,15 @@ function initProductSortable(storeId, store){
 
 
 async function addToCart(product){
-  const ref = db.collection("stores")
-    .doc(product.storeId)
-    .collection("products")
-    .doc(product.id);
+  // カート追加時にはFirestoreを読まない。
+  // 商品一覧を開いた時点の在庫数で一旦チェックする。
+  // 最終的な在庫確認は、購入確定時のtransactionで行う。
 
-  const snap = await ref.get();
+  const latestStock = Number(product.stock || 0);
 
-  if(!snap.exists){
-    alert("商品が見つかりません");
-    return;
-  }
-
-  const latest = snap.data();
-  const latestStock = Number(latest.stock || 0);
-
-  const sameCount = cart.filter(p=>p.id === product.id && p.storeId === product.storeId).length;
+  const sameCount = cart.filter(item =>
+    item.id === product.id && item.storeId === product.storeId
+  ).length;
 
   if(sameCount >= latestStock){
     alert("在庫不足です");
@@ -1931,9 +1924,9 @@ async function addToCart(product){
 
   cart.push({
     ...product,
-    price:Number(product.price || 0),
-    saleDay:product.saleDay || latest.saleDay || "",
-    saleDayLabel:product.saleDayLabel || latest.saleDayLabel || getSaleDayLabel(latest.saleDay)
+    price: Number(product.price || 0),
+    saleDay: product.saleDay || "",
+    saleDayLabel: product.saleDayLabel || getSaleDayLabel(product.saleDay)
   });
 
   updateCartButton();
