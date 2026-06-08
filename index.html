@@ -234,7 +234,10 @@ function setActiveRole(mode){
   activeRole = mode;
   localStorage.setItem("bazaarActiveRole", activeRole);
   updateRoleUI();
-  loadStores();
+  gateAndLoadStores().catch(e=>{
+    console.error(e);
+    alert(e.message);
+  });
 }
 
 function restoreActiveRole(){
@@ -581,9 +584,12 @@ async function setupLoggedInUser(user){
 
   restoreActiveRole();
   updateRoleUI();
-  loadStores();
 
-  if(!currentProfile){
+  const gateResult = await gateAndLoadStores();
+
+  // 購入停止中の購入者・販売者には、読み取りを増やさない停止画面だけを見せる。
+  // その場合はプロフィール登録画面も出さない。
+  if(gateResult !== "closed" && !currentProfile){
     showProfileRegistrationModal(userData);
   }
 }
@@ -655,6 +661,51 @@ async function refreshSaleStatus(){
   }
 }
 
+function showSaleClosedScreen(message){
+  const storesGrid = document.getElementById("storesGrid");
+
+  if(storesGrid){
+    storesGrid.innerHTML = `
+      <div class="card" style="grid-column:1/-1;text-align:center;padding:28px;">
+        <h2>現在、購入できません</h2>
+        <p>${escapeHTML(message || "現在、購入受付は開始していません。")}</p>
+        <p class="small">購入受付が開始されるまで、この画面のままお待ちください。</p>
+      </div>
+    `;
+  }
+
+  const sellerPanel = document.getElementById("sellerPanel");
+  if(sellerPanel && !isAdminMode()){
+    sellerPanel.classList.add("hidden");
+  }
+}
+
+async function gateAndLoadStores(){
+  if(!currentUser){
+    showSaleClosedScreen("ログインすると、購入受付状態を確認できます。");
+    return "logged_out";
+  }
+
+  // 管理者モードだけは、購入停止中でも店舗・商品を管理できるようにする。
+  if(isAdminMode()){
+    await loadStores();
+    return "admin";
+  }
+
+  // 購入者・販売者は、購入受付状態だけ確認する。
+  // 停止中なら stores / products を読まず、停止画面だけを表示する。
+  await refreshSaleStatus();
+
+  if(saleStatus.isSaleOpen){
+    updateRoleUI();
+    await loadStores();
+    return "open";
+  }
+
+  showSaleClosedScreen(saleStatus.message);
+  return "closed";
+}
+
 async function setSaleOpen(open){
   if(!isAdminMode()){
     alert("管理者モードのみ操作できます");
@@ -674,6 +725,7 @@ async function setSaleOpen(open){
 
     await refreshSaleStatus();
     alert(open ? "購入受付を開始しました" : "購入受付を停止しました");
+    await gateAndLoadStores();
 
   }catch(e){
     console.error(e);
@@ -788,8 +840,9 @@ auth.onAuthStateChanged(async user=>{
       document.getElementById("sellerPanel").classList.add("hidden");
       document.getElementById("adminPanel").classList.add("hidden");
       document.getElementById("modeSwitchBtn").classList.add("hidden");
-
-      loadStores();
+      showSaleClosedScreen("ログインすると、購入受付状態を確認できます。");
+      clearStoresCache();
+      clearProductsCache();
     }
   }catch(e){
     console.error(e);
@@ -902,6 +955,11 @@ function clearProductsCache(storeId){
   }
 }
 
+async function getProductCached(storeId, productId){
+  const products = await getProductsCached(storeId);
+  return products.find(product => product.id === productId) || null;
+}
+
 document.getElementById("createStoreBtn").onclick = async ()=>{
   if(!(isSellerMode() || isAdminMode())){
     alert("販売者のみ可能です");
@@ -943,7 +1001,7 @@ document.getElementById("createStoreBtn").onclick = async ()=>{
   clearStoresCache();
 
   alert("店舗作成完了");
-  loadStores();
+  await gateAndLoadStores();
 };
 
 async function loadStores(){
@@ -1061,7 +1119,7 @@ async function deleteStore(storeId){
     clearStoresCache();
     clearProductsCache(storeId);
     closeModal();
-    loadStores();
+    await gateAndLoadStores();
 
   }catch(e){
     console.error(e);
@@ -1075,14 +1133,12 @@ async function openEditStore(storeId){
     return;
   }
 
-  const storeSnap = await db.collection("stores").doc(storeId).get();
+  const store = await getStoreCached(storeId);
 
-  if(!storeSnap.exists){
+  if(!store){
     alert("店舗が見つかりません");
     return;
   }
-
-  const store = storeSnap.data();
 
   if(!canEditStore(store)){
     alert("この店舗を編集できるのは、店舗作成者または管理者のみです");
@@ -1111,13 +1167,11 @@ async function submitEditStore(){
     return;
   }
 
-  const storeSnap = await db.collection("stores").doc(editingStoreId).get();
-  if(!storeSnap.exists){
+  const store = await getStoreCached(editingStoreId);
+  if(!store){
     alert("店舗が見つかりません");
     return;
   }
-
-  const store = storeSnap.data();
   if(!canEditStore(store)){
     alert("この店舗を編集できるのは、店舗作成者または管理者のみです");
     return;
@@ -1142,7 +1196,7 @@ async function submitEditStore(){
   };
 
   if(file){
-    updateData.logo = await compressImage(file, 500, 0.65);
+    updateData.logo = await compressImage(file, 800, 0.75);
   }
 
   await db.collection("stores").doc(editingStoreId).update(updateData);
@@ -1150,7 +1204,7 @@ async function submitEditStore(){
   alert("店舗情報を保存しました");
   editingStoreId = null;
   closeModal();
-  loadStores();
+  await gateAndLoadStores();
 }
 
 function showImageModal(url){
@@ -1257,7 +1311,7 @@ async function submitProduct(){
   productAuthPassed = false;
   clearProductsCache(currentStoreId);
   closeModal();
-  loadStores();
+  await gateAndLoadStores();
 }
 
 async function openStore(storeId){
@@ -1401,25 +1455,21 @@ async function openEditProduct(storeId, productId){
     return;
   }
 
-  const storeSnap = await db.collection("stores").doc(storeId).get();
-  if(!storeSnap.exists){
+  const store = await getStoreCached(storeId);
+  if(!store){
     alert("店舗が見つかりません");
     return;
   }
-
-  const store = storeSnap.data();
   if(!canEditStore(store)){
     alert("この商品を編集できるのは、店舗作成者または管理者のみです");
     return;
   }
 
-  const productSnap = await db.collection("stores").doc(storeId).collection("products").doc(productId).get();
-  if(!productSnap.exists){
+  const product = await getProductCached(storeId, productId);
+  if(!product){
     alert("商品が見つかりません");
     return;
   }
-
-  const product = productSnap.data();
   editingProductStoreId = storeId;
   editingProductId = productId;
 
@@ -1448,13 +1498,11 @@ async function submitEditProduct(){
     return;
   }
 
-  const storeSnap = await db.collection("stores").doc(editingProductStoreId).get();
-  if(!storeSnap.exists){
+  const store = await getStoreCached(editingProductStoreId);
+  if(!store){
     alert("店舗が見つかりません");
     return;
   }
-
-  const store = storeSnap.data();
   if(!canEditStore(store)){
     alert("この商品を編集できるのは、店舗作成者または管理者のみです");
     return;
@@ -1511,13 +1559,11 @@ async function deleteProduct(storeId, productId){
     return;
   }
 
-  const storeSnap = await db.collection("stores").doc(storeId).get();
-  if(!storeSnap.exists){
+  const store = await getStoreCached(storeId);
+  if(!store){
     alert("店舗が見つかりません");
     return;
   }
-
-  const store = storeSnap.data();
   await refreshProductDeleteStatus();
 
   if(!canDeleteProductFromStore(store)){
@@ -1976,7 +2022,7 @@ async function performCheckout(){
     cart = [];
     updateCartButton();
     clearProductsCache();
-    loadStores();
+    await gateAndLoadStores();
 
     alert("購入が完了しました。確認メールは順次送信されます。混雑時は少し時間がかかる場合があります。");
 
