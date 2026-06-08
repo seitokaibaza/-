@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>学校祭バザー 前売り券販売サイト</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
-<style>
+<style>    
 /* ===== 基本設定 ===== */
 :root {
   --accent:#0066cc;
@@ -622,14 +622,14 @@ document.getElementById("modal").onclick = (e)=>{
 /*
   画像圧縮用の共通関数。
   スマホ写真をそのまま保存すると重いので、canvasで縮小してJPEG化する。
-  店舗ロゴ：500px / 0.65
-  商品画像：300px / 0.55
+  店舗ロゴ：500px / 0.80
+  商品画像：300px / 0.75
 */
 /* =========================================================
   画像圧縮
 ========================================================= */
 
-async function compressImage(file, maxWidth = 300, quality = 0.55){
+async function compressImage(file, maxWidth = 300, quality = 0.75){
   return new Promise((resolve, reject)=>{
     const img = new Image();
 
@@ -1398,7 +1398,7 @@ async function submitEditStore(){
   };
 
   if(file){
-    updateData.logo = await compressImage(file, 500, 0.65);
+    updateData.logo = await compressImage(file, 500, 0.80);
   }
 
   await db.collection("stores").doc(editingStoreId).update(updateData);
@@ -1499,7 +1499,7 @@ async function submitProduct(){
   let image = "";
 
   if(file){
-    image = await compressImage(file, 300, 0.55);
+    image = await compressImage(file, 300, 0.75);
   }
 
   await db.collection("stores")
