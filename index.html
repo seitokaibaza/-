@@ -1758,7 +1758,7 @@ async function submitEditProduct(){
   };
 
   if(file){
-    updateData.image = await compressImage(file, 300, 0.55);
+    updateData.image = await compressImage(file, 300, 0.75);
   }
 
   await db.collection("stores")
