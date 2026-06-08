@@ -1174,21 +1174,17 @@ document.getElementById("createStoreBtn").onclick = async ()=>{
   let logo = "";
 
   if(file){
-    logo = await compressImage(file, 500, 0.65);
+    logo = await compressImage(file, 800, 0.75);
   }
 
- await db.collection("stores")
-  .doc(currentStoreId)
-  .collection("products")
-  .add({
+  const storeRef = await db.collection("stores").add({
     name,
-    price,
-    stock,
-    image,
-    saleDay,
-    saleDayLabel:getSaleDayLabel(saleDay),
+    className,
+    pass,
+    logo,
+    ownerId: currentUser.uid,
     sortOrder: Date.now(),
-    createdAt:new Date()
+    createdAt: new Date()
   });
 
   currentStoreId = storeRef.id;
