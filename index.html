@@ -5,11 +5,11 @@
 <!doctype html>
 <html lang="ja">
 <head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="robots" content="noindex,nofollow,noarchive,nosnippet"/>
 <meta name="googlebot" content="noindex,nofollow,noarchive,nosnippet"/>
 <meta name="referrer" content="no-referrer"/>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>学校祭バザー 前売り券販売サイト</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -159,6 +159,10 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 const provider = new firebase.auth.GoogleAuthProvider();
+provider.setCustomParameters({
+  prompt: "select_account",
+  hd: "west.ed.jp"
+});
 
 /*
   Apps ScriptのWebアプリURL。
@@ -208,6 +212,9 @@ let saleStatus = {
   isSaleOpen:false,
   message:"現在、購入受付は開始していません。"
 };
+
+// settings/sale の変更をリアルタイム監視するための解除関数
+let saleStatusUnsubscribe = null;
 
 function getRoleLabel(role){
   if(role === "admin") return "管理者";
@@ -541,8 +548,12 @@ async function saveProfile(){
   alert("プロフィールを登録しました。4桁番号は " + studentCode + " です。");
 }
 
+function isAllowedSchoolEmail(email){
+  return String(email || "").trim().toLowerCase().endsWith("@west.ed.jp");
+}
+
 async function setupLoggedInUser(user){
-  if(!user.email || !user.email.endsWith("@west.ed.jp")){
+  if(!isAllowedSchoolEmail(user.email)){
     alert("西高アカウントのみ利用できます");
     await auth.signOut();
     return;
@@ -587,6 +598,7 @@ async function setupLoggedInUser(user){
 
   restoreActiveRole();
   updateRoleUI();
+  startSaleStatusListener();
 
   const gateResult = await gateAndLoadStores();
 
@@ -662,6 +674,75 @@ async function refreshSaleStatus(){
     };
     updateSaleStatusLabel();
   }
+}
+
+function startSaleStatusListener(){
+  if(saleStatusUnsubscribe){
+    saleStatusUnsubscribe();
+    saleStatusUnsubscribe = null;
+  }
+
+  if(!currentUser){
+    return;
+  }
+
+  let isFirstSnapshot = true;
+
+  saleStatusUnsubscribe = saleDocRef().onSnapshot(async snap=>{
+    if(snap.exists){
+      saleStatus = {
+        isSaleOpen: snap.data().isSaleOpen === true,
+        message: snap.data().message || "現在、購入受付は開始していません。"
+      };
+    }else{
+      saleStatus = {
+        isSaleOpen:false,
+        message:"現在、購入受付は開始していません。"
+      };
+    }
+
+    updateSaleStatusLabel();
+
+    // 初回通知では、setupLoggedInUser 内の gateAndLoadStores() が初期表示を担当する。
+    // ここで再読み込みすると、店舗一覧の読み取りが二重になりやすいため、初回だけ画面切替を行わない。
+    if(isFirstSnapshot){
+      isFirstSnapshot = false;
+      return;
+    }
+
+    // 管理者モードは、購入停止中でも管理作業を続けられるようにする。
+    if(isAdminMode()){
+      return;
+    }
+
+    // purchaser / seller は、購入停止になった瞬間に店舗・商品画面を閉じる。
+    if(!saleStatus.isSaleOpen){
+      cart = [];
+      updateCartButton();
+      closeModal();
+      clearStoresCache();
+      clearProductsCache();
+      showSaleClosedScreen(saleStatus.message);
+      return;
+    }
+
+    // 購入受付が再開されたときは、その時点で店舗一覧を読み直す。
+    await gateAndLoadStores();
+
+  }, error=>{
+    console.error(error);
+    saleStatus = {
+      isSaleOpen:false,
+      message:"販売状態を確認できませんでした。少し時間をおいて再読み込みしてください。"
+    };
+
+    updateSaleStatusLabel();
+
+    if(!isAdminMode()){
+      closeModal();
+      showSaleClosedScreen(saleStatus.message);
+    }
+  });
 }
 
 function showSaleClosedScreen(message){
@@ -833,6 +914,11 @@ auth.onAuthStateChanged(async user=>{
     if(user){
       await setupLoggedInUser(user);
     }else{
+      if(saleStatusUnsubscribe){
+        saleStatusUnsubscribe();
+        saleStatusUnsubscribe = null;
+      }
+
       currentUser = null;
       currentRole = null;
       activeRole = "purchaser";
@@ -1269,8 +1355,9 @@ async function openAddProduct(storeId){
 }
 
 async function submitProduct(){
-  if(!productAuthPassed){
-    alert("認証されていません");
+  if(!productAuthPassed || !currentStoreId){
+    alert("商品を追加する店舗が選択されていません。店舗カードの『商品追加』からやり直してください。");
+    productAuthPassed = false;
     return;
   }
 
